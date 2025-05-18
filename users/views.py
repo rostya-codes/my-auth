@@ -1,3 +1,6 @@
+import datetime
+
+import jwt
 from django.contrib.auth import get_user_model
 from django.shortcuts import render
 from rest_framework.exceptions import AuthenticationFailed
@@ -29,4 +32,21 @@ class LoginView(APIView):
         if not user.check_password(password):
             raise AuthenticationFailed('Incorrect password!!')
 
-        return Response({'message': 'success'})
+        now = datetime.datetime.now(datetime.timezone.utc)
+
+        payload = {
+            'id': user.id,
+            'exp': int((now + datetime.timedelta(minutes=60)).timestamp()),  # стандарт JWT — exp
+            'iat': int(now.timestamp())
+        }
+
+        token = jwt.encode(payload, 'secret', algorithm='HS256')
+
+        response = Response()
+
+        response.set_cookie(key='jwt', value=token, httponly=True)
+        response.data = {
+            'jwt': token
+        }
+
+        return response
